@@ -10,14 +10,21 @@ A compiler lowers that **Specification Graph** into framework-agnostic **Workspa
 
 UI is a consequence of business understanding, not a separate design activity.
 
-### Start here
+### Interactive prototype
+
+```bash
+cd prototype
+npm install
+npm run dev
+```
+
+Open http://localhost:3000 → **Launch interactive studio**.
+
+### Design docs
 
 - [`docs/translation-layer/README.md`](docs/translation-layer/README.md) — thesis, passes, principles
 - [`docs/translation-layer/architecture.md`](docs/translation-layer/architecture.md) — IR schemas
 - [`docs/translation-layer/classifiers.md`](docs/translation-layer/classifiers.md) — deterministic scorecards
 - [`docs/translation-layer/workspace-definition.schema.yaml`](docs/translation-layer/workspace-definition.schema.yaml) — output contract
 - [`examples/child-immunization/`](examples/child-immunization/) — full compile example
-
-### Diagrams
-
-See artifacts generated with this design (`b2ux-*.png`).
+- [`prototype/`](prototype/) — runnable interactive studio
