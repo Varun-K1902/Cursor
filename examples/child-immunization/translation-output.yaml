@@ -1,0 +1,474 @@
+# Translation Layer output — Child Immunization
+# Compiled UX semantics (still not UI)
+
+meta:
+  compiler: business-to-ux-translation-layer
+  version: 1.0.0
+  journey: j_child_immunization
+
+# ---------------------------------------------------------------------------
+# P1–P3 per activity (summary)
+# ---------------------------------------------------------------------------
+interactionIntents:
+  act_search_child:
+    primaryGoal: goal_find_child
+    goalType: locate
+    primaryObject: obj_child
+    supportingObjects: []
+    cognitiveMode: scan
+    readWriteRatio: 1.0
+    successSignal: Correct child selected for review
+
+  act_review_child:
+    primaryGoal: goal_readiness
+    goalType: comprehend
+    primaryObject: obj_child
+    supportingObjects: [obj_vaccination, obj_growth, obj_visit, obj_document, obj_family]
+    operations:
+      read: [info_name, info_id, info_dob, info_age, info_sex, info_nutrition, info_eligibility, info_overdue_count, info_schedule, info_last_visit, info_growth_z]
+      write: []
+    decisions: [dec_eligible, dec_has_overdue]
+    actions: [actn_administer, actn_record_growth, actn_refer, actn_print, actn_transfer]
+    cognitiveMode: inspect
+    readWriteRatio: 1.0
+    decisionDensity: med
+    actionDensity: med
+    objectSpan: cluster
+    timeOrientation: range
+    entryContext: search-result
+    successSignal: Worker can correctly choose next clinical action
+
+  act_administer:
+    goalType: mutate
+    primaryObject: obj_vaccination
+    cognitiveMode: compose
+    readWriteRatio: 0.4
+    objectSpan: single
+    entryContext: journey-step
+
+  act_record_growth:
+    goalType: mutate
+    primaryObject: obj_growth
+    cognitiveMode: compose
+    readWriteRatio: 0.35
+    objectSpan: single
+    entryContext: journey-step
+
+workspacePatterns:
+  act_search_child:
+    selected: SearchWorkspace
+    confidence: 0.91
+    rationale: ["goalType=locate", "scan mode", "large child population implied"]
+
+  act_review_child:
+    selected: ProfileWorkspace
+    confidence: 0.86
+    alternate: TimelineWorkspace
+    scores:
+      ProfileWorkspace: 14
+      TimelineWorkspace: 9
+      CaptureWorkspace: 2
+      SearchWorkspace: -3
+    rationale:
+      - comprehend + inspect
+      - single Child primary
+      - related cluster size 5
+      - read-dominant
+      - temporal related objects keep Timeline as alternate
+
+  act_administer:
+    selected: CaptureWorkspace
+    confidence: 0.88
+    rationale: ["mutate", "write-dominant", "focused object Vaccination"]
+
+  act_record_growth:
+    selected: CaptureWorkspace
+    confidence: 0.9
+    rationale: ["mutate", "write-dominant", "focused object Growth Record"]
+
+# ---------------------------------------------------------------------------
+# P4 Information Architecture — Review Child
+# ---------------------------------------------------------------------------
+informationArchitecture_review_child:
+  primaryObject: obj_child
+  nodes:
+    - { ref: info_name, priority: critical, facet: identity, displayRole: headline }
+    - { ref: info_id, priority: critical, facet: identity, displayRole: field }
+    - { ref: info_dob, priority: critical, facet: identity, displayRole: field }
+    - { ref: info_age, priority: critical, facet: identity, displayRole: field }
+    - { ref: info_eligibility, priority: critical, facet: status, displayRole: signal }
+    - { ref: info_overdue_count, priority: critical, facet: status, displayRole: metric }
+    - { ref: info_nutrition, priority: important, facet: status, displayRole: signal }
+    - { ref: info_schedule, priority: important, facet: clinical, displayRole: collection }
+    - { ref: info_growth_z, priority: important, facet: clinical, displayRole: metric }
+    - { ref: info_last_visit, priority: supporting, facet: temporal, displayRole: field }
+    - { ref: info_sex, priority: supporting, facet: identity, displayRole: field }
+  collections:
+    - { object: obj_vaccination, priority: important, volume: large_set, affinity: clinical }
+    - { object: obj_growth, priority: important, volume: large_set, affinity: clinical }
+    - { object: obj_visit, priority: supporting, volume: large_set, affinity: temporal }
+    - { object: obj_family, priority: supporting, volume: one, affinity: identity }
+    - { object: obj_document, priority: reference, volume: large_set, affinity: evidence }
+
+# ---------------------------------------------------------------------------
+# P5 Navigation Model — Review Child
+# ---------------------------------------------------------------------------
+navigationModel_review_child:
+  primary: { id: obj_child, kind: BusinessObject, label: Child }
+  identityStrip:
+    - { id: info_name, kind: Information, label: Name }
+    - { id: info_age, kind: Information, label: Age }
+    - { id: info_sex, kind: Information, label: Sex }
+    - { id: info_id, kind: Information, label: Child ID }
+    - { id: info_nutrition, kind: Information, label: Nutrition Status }
+  peerNavigation:
+    - group: Clinical
+      items:
+        - { id: nav_overview, label: Overview, target: { id: sec_overview, kind: Section, label: Overview } }
+        - { id: nav_vaccinations, label: Vaccinations, target: { id: obj_vaccination, kind: BusinessObject, label: Vaccination }, badgeFrom: { id: rule_overdue, kind: Rule, label: Show overdue vaccines } }
+        - { id: nav_growth, label: Growth, target: { id: obj_growth, kind: BusinessObject, label: Growth Record } }
+        - { id: nav_visits, label: Visits, target: { id: obj_visit, kind: BusinessObject, label: Visit } }
+  sideGroups: []
+  relatedPanels:
+    - { target: { id: obj_family, kind: BusinessObject, label: Family }, priority: supporting }
+  expandable:
+    - { id: obj_document, kind: BusinessObject, label: Document }
+  nested:
+    obj_family:
+      - { id: family_members, kind: Information, label: Members }
+      - { id: family_guardians, kind: Information, label: Guardians }
+      - { id: family_contact, kind: Information, label: Contact }
+  temporalSpine: { enabled: false, objects: [] }
+  strategyAssignments:
+    - { target: obj_vaccination, strategy: peerNav, rationale: ["clinical affinity peer set", "important", "collection", "3–7 peer window"] }
+    - { target: obj_growth, strategy: peerNav, rationale: ["clinical affinity peer set"] }
+    - { target: obj_visit, strategy: peerNav, rationale: ["temporal sibling in clinical review"] }
+    - { target: obj_family, strategy: relatedPanel, rationale: ["cardinality one", "identity affinity"] }
+    - { target: obj_document, strategy: expandable, rationale: ["reference priority", "low frequency", "evidence"] }
+
+# ---------------------------------------------------------------------------
+# P6 Action Model — Review Child
+# ---------------------------------------------------------------------------
+actionModel_review_child:
+  primary:
+    - { id: actn_administer, kind: Action, label: Administer Vaccine }
+  secondary:
+    - { id: actn_record_growth, kind: Action, label: Record Growth }
+    - { id: actn_refer, kind: Action, label: Refer Child }
+  overflow:
+    - { id: actn_print, kind: Action, label: Print Card }
+    - { id: actn_transfer, kind: Action, label: Transfer Record }
+  destructive: []
+  recommendedNext: { id: actn_administer, kind: Action, label: Administer Vaccine }
+  ranking:
+    - { action: actn_administer, score: 11, reasons: ["advances primaryGoal", "outbound", "criticality 3"] }
+    - { action: actn_record_growth, score: 7, reasons: ["outbound", "criticality 2"] }
+    - { action: actn_refer, score: 5, reasons: ["outbound", "criticality 2"] }
+    - { action: actn_print, score: 1, reasons: ["rare → overflow"] }
+    - { action: actn_transfer, score: 1, reasons: ["admin → overflow"] }
+
+# ---------------------------------------------------------------------------
+# P7 Affordance Bindings
+# ---------------------------------------------------------------------------
+affordanceBindings:
+  - id: bind_eligibility
+    rule: { id: rule_eligibility, kind: Rule, label: Cannot administer vaccine before eligibility }
+    when: "child.eligible != true OR child.age < dose.minAge"
+    effects:
+      - type: disableAction
+        target: { id: actn_administer, kind: Action, label: Administer Vaccine }
+        severity: critical
+        messageKey: vaccine.ineligible
+      - type: disableAction
+        target: { id: actn_confirm_dose, kind: Action, label: Confirm Administration }
+        severity: critical
+        messageKey: vaccine.ineligible
+
+  - id: bind_overdue
+    rule: { id: rule_overdue, kind: Rule, label: Show overdue vaccines }
+    when: "child.overdueVaccines.count > 0"
+    effects:
+      - type: alertBadge
+        target: { id: nav_vaccinations, kind: NavItem, label: Vaccinations }
+        severity: warning
+        messageKey: vaccine.overdue.count
+      - type: warningBanner
+        target: { id: sec_status, kind: Section, label: Clinical Status }
+        severity: warning
+        messageKey: vaccine.overdue.banner
+      - type: kpiSignal
+        target: { id: info_overdue_count, kind: Information, label: Overdue Vaccine Count }
+        severity: warning
+        messageKey: vaccine.overdue.count
+      - type: recommendedNextAction
+        target: { id: actn_administer, kind: Action, label: Administer Vaccine }
+        severity: info
+        messageKey: vaccine.overdue.act
+
+  - id: bind_duplicate
+    rule: { id: rule_duplicate, kind: Rule, label: Block duplicate administration }
+    when: "selectedDose.alreadyAdministered == true"
+    effects:
+      - type: blockAction
+        target: { id: actn_confirm_dose, kind: Action, label: Confirm Administration }
+        severity: critical
+        messageKey: vaccine.duplicate.block
+      - type: inlineValidation
+        target: { id: info_dose_type, kind: Information, label: Dose / Antigen }
+        severity: critical
+        messageKey: vaccine.duplicate.field
+
+# ---------------------------------------------------------------------------
+# P8 Workspace Definitions
+# ---------------------------------------------------------------------------
+workspaces:
+  - id: ws_search_child
+    name: Find Child
+    purpose: Locate the correct child record
+    pattern: SearchWorkspace
+    primaryObject: { id: obj_child, kind: BusinessObject, label: Child }
+    primaryGoal: { id: goal_find_child, kind: Goal, label: Locate the correct child record }
+    permissions:
+      roles: [role_anm, role_mo]
+      actionsAllowed: []
+    navigation:
+      primary: { id: obj_child, kind: BusinessObject, label: Child }
+      identityStrip: []
+    sections:
+      - { id: search_query, purpose: Express identity criteria, priority: critical, presentationHint: stack, contentRefs: [info_name, info_id, info_dob] }
+      - { id: results, purpose: Choose the matching child, priority: critical, presentationHint: stack, contentRefs: [obj_child] }
+    quickActions: { primary: [], secondary: [], inlineRow: [], overflow: [] }
+    alerts: []
+    kpis: []
+    relatedInformation: []
+    widgets:
+      - { kind: searchFacet, binds: [info_name, info_id, info_dob], priority: critical }
+      - { kind: queueTable, binds: [obj_child], priority: critical }
+    rules: []
+    trace:
+      activityId: act_search_child
+      journeyId: j_child_immunization
+      classifierConfidence: 0.91
+
+  - id: ws_review_child
+    name: Child Clinical Review
+    purpose: Understand this child's status well enough to act safely
+    pattern: ProfileWorkspace
+    primaryObject: { id: obj_child, kind: BusinessObject, label: Child }
+    primaryGoal: { id: goal_readiness, kind: Goal, label: Establish clinical readiness for immunization actions }
+    permissions:
+      roles:
+        - { id: role_anm, kind: Role, label: ANM }
+        - { id: role_mo, kind: Role, label: Medical Officer }
+      actionsAllowed:
+        - { id: actn_administer, kind: Action, label: Administer Vaccine }
+        - { id: actn_record_growth, kind: Action, label: Record Growth }
+        - { id: actn_refer, kind: Action, label: Refer Child }
+    navigation: # see navigationModel_review_child
+      $ref: navigationModel_review_child
+    sections:
+      - id: identity
+        purpose: Recognize the child
+        priority: critical
+        presentationHint: chrome
+        contentRefs: [info_name, info_age, info_sex, info_id, info_nutrition]
+      - id: sec_status
+        purpose: Surface safety and eligibility signals
+        priority: critical
+        presentationHint: stack
+        contentRefs: [info_eligibility, info_overdue_count]
+      - id: sec_overview
+        purpose: Summarize clinical context for judgment
+        priority: important
+        presentationHint: stack
+        contentRefs: [info_schedule, info_growth_z, info_last_visit]
+      - id: sec_family
+        purpose: Household context
+        priority: supporting
+        presentationHint: panel
+        contentRefs: [obj_family]
+      - id: sec_documents
+        purpose: Evidence and attachments
+        priority: reference
+        presentationHint: disclosure
+        contentRefs: [obj_document]
+    quickActions:
+      $ref: actionModel_review_child
+    alerts:
+      - $ref: bind_overdue
+      - $ref: bind_eligibility
+    kpis:
+      - { id: kpi_overdue, label: Overdue vaccines, binds: { id: info_overdue_count, kind: Information, label: Overdue Vaccine Count }, priority: critical }
+      - { id: kpi_growth, label: Growth Z-Score, binds: { id: info_growth_z, kind: Information, label: Growth Z-Score }, priority: important }
+      - { id: kpi_last_visit, label: Last visit, binds: { id: info_last_visit, kind: Information, label: Last Visit }, priority: supporting }
+    relatedInformation: [obj_vaccination, obj_growth, obj_visit, obj_family, obj_document]
+    widgets:
+      - { kind: identityHeader, binds: [info_name, info_age, info_id, info_nutrition], priority: critical }
+      - { kind: kpiStrip, binds: [info_overdue_count, info_growth_z, info_last_visit], priority: critical }
+      - { kind: statusSignal, binds: [info_eligibility, info_overdue_count], priority: critical }
+      - { kind: scheduleList, binds: [info_schedule, obj_vaccination], priority: important }
+      - { kind: measurementTrend, binds: [obj_growth, info_growth_z], priority: important }
+      - { kind: relatedEntitySummary, binds: [obj_family], priority: supporting }
+      - { kind: documentList, binds: [obj_document], priority: reference }
+    rules:
+      - $ref: bind_eligibility
+      - $ref: bind_overdue
+      - $ref: bind_duplicate
+    trace:
+      activityId: act_review_child
+      journeyId: j_child_immunization
+      classifierConfidence: 0.86
+      alternatePattern: TimelineWorkspace
+      rationale:
+        - Profile from comprehend/inspect/single/cluster/read-dominant
+        - Peer nav compiled for clinical collections (3–7 window)
+        - Family as panel; Documents as disclosure
+        - Administer Vaccine ranked primary from goal advancement
+
+  - id: ws_administer_vaccine
+    name: Administer Vaccine
+    purpose: Record a due dose safely under eligibility constraints
+    pattern: CaptureWorkspace
+    primaryObject: { id: obj_vaccination, kind: BusinessObject, label: Vaccination }
+    primaryGoal: { id: goal_give_dose, kind: Goal, label: Administer due vaccine safely }
+    navigation:
+      primary: { id: obj_vaccination, kind: BusinessObject, label: Vaccination }
+      identityStrip: [info_name, info_age, info_id]
+    sections:
+      - { id: context, purpose: Keep child context visible while capturing, priority: critical, presentationHint: chrome, contentRefs: [info_name, info_age, info_eligibility] }
+      - { id: capture, purpose: Select and confirm dose, priority: critical, presentationHint: stack, contentRefs: [info_dose_type, info_schedule] }
+      - { id: guards, purpose: Enforce eligibility and uniqueness, priority: critical, presentationHint: stack, contentRefs: [rule_eligibility, rule_duplicate] }
+    quickActions:
+      primary: [{ id: actn_confirm_dose, kind: Action, label: Confirm Administration }]
+      secondary: [{ id: actn_cancel, kind: Action, label: Cancel }]
+      overflow: []
+    widgets:
+      - { kind: identityHeader, binds: [info_name, info_age], priority: critical }
+      - { kind: recordForm, binds: [info_dose_type, info_schedule], priority: critical }
+      - { kind: statusSignal, binds: [info_eligibility], priority: critical }
+    rules: [bind_eligibility, bind_duplicate]
+    trace:
+      activityId: act_administer
+      journeyId: j_child_immunization
+      classifierConfidence: 0.88
+
+  - id: ws_record_growth
+    name: Record Growth
+    purpose: Capture weight and height for growth monitoring
+    pattern: CaptureWorkspace
+    primaryObject: { id: obj_growth, kind: BusinessObject, label: Growth Record }
+    primaryGoal: { id: goal_record_growth, kind: Goal, label: Capture growth measurements }
+    navigation:
+      primary: { id: obj_growth, kind: BusinessObject, label: Growth Record }
+      identityStrip: [info_name, info_age]
+    sections:
+      - { id: context, purpose: Child context, priority: important, presentationHint: chrome, contentRefs: [info_name, info_age] }
+      - { id: capture, purpose: Enter measurements, priority: critical, presentationHint: stack, contentRefs: [info_weight, info_height] }
+    quickActions:
+      primary: [{ id: actn_save_growth, kind: Action, label: Save Growth }]
+      secondary: [{ id: actn_cancel, kind: Action, label: Cancel }]
+    widgets:
+      - { kind: identityHeader, binds: [info_name, info_age], priority: important }
+      - { kind: recordForm, binds: [info_weight, info_height], priority: critical }
+      - { kind: measurementTrend, binds: [obj_growth], priority: supporting }
+    rules: []
+    trace:
+      activityId: act_record_growth
+      journeyId: j_child_immunization
+      classifierConfidence: 0.9
+
+# ---------------------------------------------------------------------------
+# P9 Layout Model — Review Child only (abstract regions)
+# ---------------------------------------------------------------------------
+layoutModel_review_child:
+  workspaceId: ws_review_child
+  regions:
+    header:
+      embeds: [identityHeader, kpiStrip, alertRegion]
+    navigationChrome:
+      kind: peerTabs
+      items: [Overview, Vaccinations, Growth, Visits]
+      note: "peerTabs is a chrome strategy emitted by compiler — not a business-user choice"
+    primary:
+      embeds: [statusSignal, scheduleList]
+    secondary:
+      embeds: [relatedEntitySummary, measurementTrend]
+    actionRail:
+      primary: [AdministerVaccine]
+      secondary: [RecordGrowth, ReferChild]
+      overflow: [PrintCard, TransferRecord]
+    disclosure:
+      embeds: [documentList]
+  priorityGate:
+    critical: [header, primary]
+    important: [primary]
+    supporting: [secondary]
+    reference: [disclosure]
+
+# ---------------------------------------------------------------------------
+# Application Model
+# ---------------------------------------------------------------------------
+applicationModel:
+  name: Child Immunization
+  journeys:
+    - id: j_child_immunization
+      label: Child Immunization
+      workspaces: [ws_search_child, ws_review_child, ws_administer_vaccine, ws_record_growth]
+      transitions:
+        - { from: ws_search_child, on: select_child, to: ws_review_child }
+        - { from: ws_review_child, on: actn_administer, to: ws_administer_vaccine }
+        - { from: ws_review_child, on: actn_record_growth, to: ws_record_growth }
+        - { from: ws_administer_vaccine, on: complete, to: ws_review_child }
+        - { from: ws_record_growth, on: complete, to: ws_review_child }
+      shellNavigation:
+        primary: { id: j_child_immunization, kind: Journey, label: Child Immunization }
+        identityStrip: []
+        peerNavigation:
+          - group: Journey
+            items:
+              - { id: shell_search, label: Search Child, target: ws_search_child }
+              - { id: shell_review, label: Review Child, target: ws_review_child }
+        # Capture workspaces intentionally omitted from shell — reached via actions only
+
+# ---------------------------------------------------------------------------
+# Suggested UX pattern summary (still abstract)
+# ---------------------------------------------------------------------------
+suggestedUxPatterns:
+  Search Child: Search Workspace → query + results collection
+  Review Child: Profile Workspace → identity + status + peer clinical collections + action rail
+  Administer Vaccine: Capture Workspace → context header + dose form + guard bindings
+  Record Growth: Capture Workspace → measurement form + optional trend
+
+sectionHierarchy_review_child:
+  - Identity (critical)
+  - Clinical Status & Alerts (critical)
+  - Overview / Schedule (important)
+  - Peer: Vaccinations | Growth | Visits (important/supporting)
+  - Family panel (supporting)
+  - Documents disclosure (reference)
+
+actionPlacement_review_child:
+  primaryRail: Administer Vaccine
+  secondaryRail: Record Growth, Refer Child
+  overflowMenu: Print Card, Transfer Record
+  recommendedNext: Administer Vaccine when overdue ∧ eligible
+
+alertPlacement_review_child:
+  banner: overdue warning on status section
+  badge: Vaccinations peer item
+  kpi: overdue count in header strip
+  disabled: Administer Vaccine when ineligible
+  inline: dose field on capture when duplicate
+
+recommendedComponents_abstract:
+  # Component *types* for later renderers — not React/HTML
+  - identityHeader
+  - kpiStrip
+  - statusSignal
+  - scheduleList
+  - measurementTrend
+  - relatedEntitySummary
+  - documentList
+  - searchFacet
+  - queueTable
+  - recordForm

@@ -1,0 +1,161 @@
+# Specification Graph — Child Immunization
+# Business-authored semantics only (no UX concepts)
+
+journey:
+  id: j_child_immunization
+  label: Child Immunization
+  goal: Ensure eligible children receive due vaccines safely and completely
+
+roles:
+  - { id: role_anm, kind: Role, label: ANM }
+  - { id: role_mo, kind: Role, label: Medical Officer }
+  - { id: role_parent, kind: Role, label: Parent / Caregiver }
+
+objects:
+  - { id: obj_child, kind: BusinessObject, label: Child }
+  - { id: obj_vaccination, kind: BusinessObject, label: Vaccination }
+  - { id: obj_growth, kind: BusinessObject, label: Growth Record }
+  - { id: obj_visit, kind: BusinessObject, label: Visit }
+  - { id: obj_document, kind: BusinessObject, label: Document }
+  - { id: obj_family, kind: BusinessObject, label: Family }
+
+relationships:
+  - { from: obj_child, to: obj_vaccination, type: related_to, cardinality: large_set, affinity: clinical, temporal: true, volume: large_set }
+  - { from: obj_child, to: obj_growth, type: related_to, cardinality: large_set, affinity: clinical, temporal: true, volume: large_set }
+  - { from: obj_child, to: obj_visit, type: related_to, cardinality: large_set, affinity: temporal, temporal: true, volume: large_set }
+  - { from: obj_child, to: obj_document, type: related_to, cardinality: large_set, affinity: evidence, volume: large_set, frequency: low }
+  - { from: obj_child, to: obj_family, type: related_to, cardinality: one, affinity: identity, volume: one, frequency: med }
+  - { from: obj_family, to: obj_child, type: related_to, cardinality: small_set, affinity: identity, note: members }
+
+information:
+  - { id: info_name, object: obj_child, label: Name, facet: identity, identity: true }
+  - { id: info_id, object: obj_child, label: Child ID, facet: identity, identity: true }
+  - { id: info_dob, object: obj_child, label: Date of Birth, facet: identity, identity: true }
+  - { id: info_age, object: obj_child, label: Age, facet: identity, identity: true }
+  - { id: info_sex, object: obj_child, label: Sex, facet: identity }
+  - { id: info_nutrition, object: obj_child, label: Nutrition Status, facet: status }
+  - { id: info_eligibility, object: obj_child, label: Vaccine Eligibility, facet: status, guards_rules: [rule_eligibility] }
+  - { id: info_overdue_count, object: obj_vaccination, label: Overdue Vaccine Count, facet: status, kpi: true }
+  - { id: info_schedule, object: obj_vaccination, label: Immunization Schedule, facet: clinical }
+  - { id: info_last_visit, object: obj_visit, label: Last Visit, facet: temporal }
+  - { id: info_growth_z, object: obj_growth, label: Growth Z-Score, facet: clinical, kpi: true }
+  - { id: info_dose_type, object: obj_vaccination, label: Dose / Antigen, facet: clinical }
+  - { id: info_weight, object: obj_growth, label: Weight, facet: clinical }
+  - { id: info_height, object: obj_growth, label: Height, facet: clinical }
+
+goals:
+  - { id: goal_find_child, label: Locate the correct child record }
+  - { id: goal_readiness, label: Establish clinical readiness for immunization actions }
+  - { id: goal_give_dose, label: Administer due vaccine safely }
+  - { id: goal_record_growth, label: Capture growth measurements }
+
+activities:
+  - id: act_search_child
+    label: Search Child
+    goal: goal_find_child
+    verb: search
+    operates_on: obj_child
+    reads: [info_name, info_id, info_dob, info_age]
+    writes: []
+    entry: journey-step
+    roles: [role_anm, role_mo]
+
+  - id: act_review_child
+    label: Review Child
+    goal: goal_readiness
+    verb: review
+    operates_on: obj_child
+    reads:
+      - info_name
+      - info_id
+      - info_dob
+      - info_age
+      - info_sex
+      - info_nutrition
+      - info_eligibility
+      - info_overdue_count
+      - info_schedule
+      - info_last_visit
+      - info_growth_z
+    writes: []
+    decisions: [dec_eligible, dec_has_overdue]
+    actions: [actn_administer, actn_record_growth, actn_refer, actn_print, actn_transfer]
+    exceptions: [exc_incomplete, exc_identity_mismatch]
+    entry: search-result
+    roles: [role_anm, role_mo]
+    precedes_from: act_search_child
+
+  - id: act_administer
+    label: Administer Vaccine
+    goal: goal_give_dose
+    verb: administer
+    operates_on: obj_vaccination
+    reads: [info_eligibility, info_schedule, info_dose_type, info_age]
+    writes: [info_dose_type, obj_vaccination]
+    decisions: [dec_eligible]
+    actions: [actn_confirm_dose, actn_cancel]
+    entry: journey-step
+    roles: [role_anm, role_mo]
+    precedes_from: act_review_child
+
+  - id: act_record_growth
+    label: Record Growth
+    goal: goal_record_growth
+    verb: record
+    operates_on: obj_growth
+    reads: [info_age, info_weight, info_height]
+    writes: [info_weight, info_height, info_growth_z]
+    actions: [actn_save_growth, actn_cancel]
+    entry: journey-step
+    roles: [role_anm]
+    precedes_from: act_review_child
+
+decisions:
+  - { id: dec_eligible, label: Eligible for dose?, reads: [info_eligibility, info_age, info_schedule] }
+  - { id: dec_has_overdue, label: Has overdue vaccines?, reads: [info_overdue_count] }
+
+actions:
+  - { id: actn_administer, label: Administer Vaccine, criticality: 3, writes: [obj_vaccination], advances: [goal_readiness, goal_give_dose] }
+  - { id: actn_record_growth, label: Record Growth, criticality: 2, writes: [obj_growth], advances: [goal_record_growth] }
+  - { id: actn_refer, label: Refer Child, criticality: 2, writes: [obj_visit] }
+  - { id: actn_print, label: Print Card, criticality: 0, stereotype: rare }
+  - { id: actn_transfer, label: Transfer Record, criticality: 0, stereotype: admin }
+  - { id: actn_confirm_dose, label: Confirm Administration, criticality: 3, writes: [obj_vaccination], advances: [goal_give_dose] }
+  - { id: actn_save_growth, label: Save Growth, criticality: 3, writes: [obj_growth], advances: [goal_record_growth] }
+  - { id: actn_cancel, label: Cancel, criticality: 0 }
+
+rules:
+  - id: rule_eligibility
+    label: Cannot administer vaccine before eligibility
+    stereotype: eligibility
+    hard: true
+    guards: [actn_administer, actn_confirm_dose]
+    when: "child.eligible != true OR child.age < dose.minAge"
+    message: Child is not eligible for this vaccine yet
+
+  - id: rule_overdue
+    label: Show overdue vaccines
+    stereotype: sla.overdue
+    hard: false
+    when: "child.overdueVaccines.count > 0"
+    message: One or more vaccines are overdue
+
+  - id: rule_duplicate
+    label: Block duplicate administration
+    stereotype: uniqueness
+    hard: true
+    guards: [actn_confirm_dose]
+    when: "selectedDose.alreadyAdministered == true"
+    message: This dose was already recorded
+
+exceptions:
+  - { id: exc_incomplete, label: Record Incomplete }
+  - { id: exc_identity_mismatch, label: Identity Mismatch }
+  - { id: exc_duplicate_dose, label: Duplicate Dose Attempt, raised_by: rule_duplicate }
+
+transitions:
+  - { from: act_search_child, on: select_child, to: act_review_child }
+  - { from: act_review_child, on: actn_administer, to: act_administer }
+  - { from: act_review_child, on: actn_record_growth, to: act_record_growth }
+  - { from: act_administer, on: complete, to: act_review_child }
+  - { from: act_record_growth, on: complete, to: act_review_child }
