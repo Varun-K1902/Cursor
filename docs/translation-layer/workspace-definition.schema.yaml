@@ -1,0 +1,218 @@
+# Workspace Definition — Output Schema
+
+Framework-agnostic. Renderers MUST NOT require fields beyond this contract.
+Version: 1.0.0
+
+```yaml
+$schema: workspace-definition/v1
+WorkspaceDefinition:
+  type: object
+  required:
+    - id
+    - name
+    - purpose
+    - pattern
+    - primaryObject
+    - primaryGoal
+    - navigation
+    - sections
+    - quickActions
+    - rules
+    - trace
+  properties:
+    id: { type: string }
+    name: { type: string }
+    purpose: { type: string }
+    pattern:
+      type: string
+      enum:
+        - SearchWorkspace
+        - ProfileWorkspace
+        - DashboardWorkspace
+        - InboxWorkspace
+        - ApprovalWorkspace
+        - WizardWorkspace
+        - CaptureWorkspace
+        - AnalyticsWorkspace
+        - TimelineWorkspace
+    primaryObject:
+      $ref: Ref
+    primaryGoal:
+      $ref: Ref
+    permissions:
+      type: object
+      properties:
+        roles: { type: array, items: { $ref: Ref } }
+        actionsAllowed: { type: array, items: { $ref: Ref } }
+    navigation:
+      $ref: NavigationModel
+    sections:
+      type: array
+      items:
+        $ref: Section
+    quickActions:
+      $ref: ActionModel
+    alerts:
+      type: array
+      items: { $ref: AffordanceBinding }
+    kpis:
+      type: array
+      items:
+        type: object
+        required: [id, label, binds]
+        properties:
+          id: { type: string }
+          label: { type: string }
+          binds: { $ref: Ref }
+          priority:
+            enum: [critical, important, supporting, reference]
+    relatedInformation:
+      type: array
+      items: { $ref: Ref }
+    widgets:
+      type: array
+      items:
+        type: object
+        required: [kind, binds]
+        properties:
+          kind:
+            enum:
+              - statusSignal
+              - identityHeader
+              - recordForm
+              - scheduleList
+              - measurementTrend
+              - approvalCard
+              - queueTable
+              - searchFacet
+              - stepProgress
+              - timeline
+              - relatedEntitySummary
+              - documentList
+              - kpiStrip
+          binds:
+            type: array
+            items: { $ref: Ref }
+          priority:
+            enum: [critical, important, supporting, reference]
+    rules:
+      type: array
+      items: { $ref: AffordanceBinding }
+    trace:
+      type: object
+      required: [activityId, journeyId]
+      properties:
+        activityId: { type: string }
+        journeyId: { type: string }
+        classifierConfidence: { type: number }
+        rationale: { type: array, items: { type: string } }
+        alternatePattern: { type: string }
+
+Ref:
+  type: object
+  required: [id, kind, label]
+  properties:
+    id: { type: string }
+    kind: { type: string }
+    label: { type: string }
+
+Section:
+  type: object
+  required: [id, purpose, priority, contentRefs]
+  properties:
+    id: { type: string }
+    purpose: { type: string }
+    priority:
+      enum: [critical, important, supporting, reference]
+    presentationHint:
+      enum: [stack, panel, disclosure, rail, chrome]
+    contentRefs:
+      type: array
+      items: { $ref: Ref }
+
+NavigationModel:
+  type: object
+  required: [primary, identityStrip]
+  properties:
+    primary: { $ref: Ref }
+    identityStrip:
+      type: array
+      items: { $ref: Ref }
+    peerNavigation:
+      type: array
+      items:
+        type: object
+        properties:
+          group: { type: string }
+          items:
+            type: array
+            items:
+              type: object
+              properties:
+                id: { type: string }
+                label: { type: string }
+                target: { $ref: Ref }
+                badgeFrom: { $ref: Ref }
+    sideGroups: { type: array }
+    relatedPanels:
+      type: array
+      items:
+        type: object
+        properties:
+          target: { $ref: Ref }
+          priority:
+            enum: [critical, important, supporting, reference]
+    expandable:
+      type: array
+      items: { $ref: Ref }
+    nested:
+      type: object
+      additionalProperties:
+        type: array
+        items: { $ref: Ref }
+    temporalSpine:
+      type: object
+      properties:
+        enabled: { type: boolean }
+        objects:
+          type: array
+          items: { $ref: Ref }
+
+ActionModel:
+  type: object
+  properties:
+    primary: { type: array, items: { $ref: Ref } }
+    secondary: { type: array, items: { $ref: Ref } }
+    overflow: { type: array, items: { $ref: Ref } }
+    inlineRow: { type: array, items: { $ref: Ref } }
+    destructive: { type: array, items: { $ref: Ref } }
+    recommendedNext: { $ref: Ref }
+
+AffordanceBinding:
+  type: object
+  required: [id, rule, when, effects]
+  properties:
+    id: { type: string }
+    rule: { $ref: Ref }
+    when: { type: string }
+    effects:
+      type: array
+      items:
+        type: object
+        required: [type, target]
+        properties:
+          type:
+            enum:
+              - disableAction
+              - blockAction
+              - warningBanner
+              - alertBadge
+              - inlineValidation
+              - recommendedNextAction
+              - conditionalVisibility
+              - kpiSignal
+          target: { $ref: Ref }
+          severity:
+            enum: [info, warning, critical]
+          messageKey: { type: string }
+```
