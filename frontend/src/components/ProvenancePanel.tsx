@@ -4,12 +4,13 @@ import { statusLabel } from '../model/labels'
 interface Props {
   model: ProcessModel
   step: Step | null
+  compact?: boolean
 }
 
-export function ProvenancePanel({ model, step }: Props) {
+export function ProvenancePanel({ model, step, compact = false }: Props) {
   if (!step) {
     return (
-      <div className="provenance-panel">
+      <div className={compact ? 'provenance-panel compact' : 'provenance-panel'}>
         <div className="preview-kicker">Provenance</div>
         <p className="muted">Select a step to see why it exists.</p>
       </div>
@@ -19,7 +20,7 @@ export function ProvenancePanel({ model, step }: Props) {
   const stmt = model.statements.find((s) => s.id === step.provenance.statementId)
 
   return (
-    <div className="provenance-panel">
+    <div className={compact ? 'provenance-panel compact' : 'provenance-panel'}>
       <div className="preview-kicker">Provenance</div>
       <h3>Why is “{step.label}” here?</h3>
       <dl className="prov-dl">
@@ -41,24 +42,30 @@ export function ProvenancePanel({ model, step }: Props) {
             <>“{step.provenance.sourceText}”</>
           )}
         </dd>
-        <dt>When</dt>
-        <dd>{new Date(step.provenance.timestamp).toLocaleString()}</dd>
+        {!compact && (
+          <>
+            <dt>When</dt>
+            <dd>{new Date(step.provenance.timestamp).toLocaleString()}</dd>
+          </>
+        )}
         {step.provenance.confirmedBy && (
           <>
             <dt>Confirmed by</dt>
             <dd>
-              {step.provenance.confirmedBy} ·{' '}
+              {step.provenance.confirmedBy}
               {step.provenance.confirmedAt
-                ? new Date(step.provenance.confirmedAt).toLocaleString()
+                ? ` · ${new Date(step.provenance.confirmedAt).toLocaleString()}`
                 : ''}
             </dd>
           </>
         )}
       </dl>
-      <p className="fine-print">
-        Editing a confirmed fact resets confirmation. Inference is visible — never silent invention
-        treated as truth.
-      </p>
+      {!compact && (
+        <p className="fine-print">
+          Editing a confirmed fact resets confirmation. Inference is visible — never silent invention
+          treated as truth.
+        </p>
+      )}
     </div>
   )
 }

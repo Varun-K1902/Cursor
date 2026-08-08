@@ -87,7 +87,7 @@ export function ConversationInput({ onSubmit, disabled, lastSummary }: Props) {
         <textarea
           value={text}
           disabled={disabled}
-          placeholder="Tell me anything about this process… (type, paste, or speak)"
+          placeholder="Tell me / type / paste / speak about the process…"
           rows={2}
           onChange={(e) => setText(e.target.value)}
           onPaste={() => {

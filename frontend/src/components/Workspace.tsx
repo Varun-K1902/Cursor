@@ -11,13 +11,14 @@ import {
   resolveChallenge,
   resolveOutcomeDestination,
 } from '../model/interpret'
-import { ProcessHeader } from './ProcessHeader'
+import { ProcessHeader, type LayoutMode } from './ProcessHeader'
 import { BusinessModelPanel } from './BusinessModelPanel'
 import { FunctionalPreview } from './FunctionalPreview'
 import { FlowView } from './FlowView'
 import { ConversationInput } from './ConversationInput'
 import { ProvenancePanel } from './ProvenancePanel'
 import { ChallengeBar } from './ChallengeBar'
+import { InsightPanel } from './InsightPanel'
 
 interface Props {
   model: ProcessModel
@@ -27,7 +28,10 @@ interface Props {
 
 export function Workspace({ model, onChange, onBack }: Props) {
   const [summary, setSummary] = useState('')
-  const [mobileTab, setMobileTab] = useState<'preview' | 'flow'>('preview')
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('workshop')
+  const [insightOpen, setInsightOpen] = useState(true)
+  const [mobilePane, setMobilePane] = useState<'model' | 'flow' | 'preview'>('flow')
+  const [focusChallengeId, setFocusChallengeId] = useState<string | null>(null)
 
   const screens = useMemo(() => deriveScreens(model), [model])
   const selected =
@@ -36,6 +40,7 @@ export function Workspace({ model, onChange, onBack }: Props) {
 
   function selectStep(id: string) {
     onChange({ ...model, selectedStepId: id })
+    setMobilePane('preview')
   }
 
   function handleInterpret(text: string, modality: 'typed' | 'voice' | 'paste') {
@@ -93,59 +98,104 @@ export function Workspace({ model, onChange, onBack }: Props) {
     />
   )
 
+  const modelPanel = (
+    <BusinessModelPanel
+      model={model}
+      selectedStepId={selected?.id ?? null}
+      onSelectStep={selectStep}
+      compact={layoutMode === 'density'}
+    />
+  )
+
+  const highlightedChallenges = focusChallengeId
+    ? {
+        ...model,
+        challenges: model.challenges.map((c) =>
+          c.id === focusChallengeId ? c : { ...c, resolved: c.resolved },
+        ),
+      }
+    : model
+
   return (
-    <div className="workspace">
-      <ProcessHeader model={model} onBack={onBack} onFreeze={handleFreeze} />
+    <div className={`workspace layout-${layoutMode}${insightOpen ? ' insight-open' : ''}`}>
+      <ProcessHeader
+        model={model}
+        layoutMode={layoutMode}
+        onLayoutMode={setLayoutMode}
+        insightOpen={insightOpen}
+        onToggleInsight={() => setInsightOpen((v) => !v)}
+        onBack={onBack}
+        onFreeze={handleFreeze}
+      />
 
       <ChallengeBar
-        model={model}
-        onResolve={(cid, oid) => onChange(resolveChallenge(model, cid, oid))}
-        onDismiss={(cid) =>
+        model={highlightedChallenges}
+        focusId={focusChallengeId}
+        onResolve={(cid, oid) => {
+          onChange(resolveChallenge(model, cid, oid))
+          setFocusChallengeId(null)
+        }}
+        onDismiss={(cid) => {
           onChange({
             ...model,
             challenges: model.challenges.map((c) =>
               c.id === cid ? { ...c, resolved: true } : c,
             ),
           })
-        }
+          setFocusChallengeId(null)
+        }}
       />
 
+      <div className="mobile-tabs tri">
+        <button
+          type="button"
+          className={mobilePane === 'model' ? 'active' : ''}
+          onClick={() => setMobilePane('model')}
+        >
+          Model
+        </button>
+        <button
+          type="button"
+          className={mobilePane === 'flow' ? 'active' : ''}
+          onClick={() => setMobilePane('flow')}
+        >
+          Flow
+        </button>
+        <button
+          type="button"
+          className={mobilePane === 'preview' ? 'active' : ''}
+          onClick={() => setMobilePane('preview')}
+        >
+          Preview
+        </button>
+      </div>
+
       <div className="workspace-body">
-        <BusinessModelPanel
-          model={model}
-          selectedStepId={selected?.id ?? null}
-          onSelectStep={selectStep}
-        />
-
-        <div className="workspace-main">
-          <div className="mobile-tabs">
-            <button
-              type="button"
-              className={mobileTab === 'preview' ? 'active' : ''}
-              onClick={() => setMobileTab('preview')}
-            >
-              Live Functional Preview
-            </button>
-            <button
-              type="button"
-              className={mobileTab === 'flow' ? 'active' : ''}
-              onClick={() => setMobileTab('flow')}
-            >
-              Flow
-            </button>
+        <div
+          className={`tri-pane mobile-${mobilePane}`}
+          data-layout={layoutMode}
+        >
+          <div className="pane-model">{modelPanel}</div>
+          <div className="pane-flow">
+            {flow}
+            <p className="sync-strip">
+              Flow and Functional Preview are projections of the same canonical model — not separate
+              documents.
+            </p>
           </div>
-
-          <div className="dual-rail">
-            <div className={mobileTab === 'preview' ? 'rail-pane active-mobile' : 'rail-pane'}>
-              {preview}
-            </div>
-            <div className={mobileTab === 'flow' ? 'rail-pane active-mobile' : 'rail-pane'}>
-              {flow}
-            </div>
+          <div className="pane-preview">
+            {preview}
+            <ProvenancePanel model={model} step={selected} compact />
           </div>
-
-          <ProvenancePanel model={model} step={selected} />
         </div>
+
+        {insightOpen && (
+          <InsightPanel
+            model={model}
+            onSelectStep={selectStep}
+            onAskChallenge={(id) => setFocusChallengeId(id)}
+          />
+        )}
       </div>
 
       <ConversationInput

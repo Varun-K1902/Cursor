@@ -2,18 +2,25 @@ import type { Challenge, ProcessModel } from '../model/types'
 
 interface Props {
   model: ProcessModel
+  focusId?: string | null
   onResolve: (challengeId: string, optionId: string) => void
   onDismiss: (challengeId: string) => void
 }
 
-export function ChallengeBar({ model, onResolve, onDismiss }: Props) {
-  const open = model.challenges.filter((c) => !c.resolved).slice(0, 2)
-  if (open.length === 0) return null
+export function ChallengeBar({ model, focusId, onResolve, onDismiss }: Props) {
+  const open = model.challenges.filter((c) => !c.resolved)
+  const shown = focusId
+    ? open.filter((c) => c.id === focusId).concat(open.filter((c) => c.id !== focusId)).slice(0, 2)
+    : open.slice(0, 2)
+  if (shown.length === 0) return null
 
   return (
     <div className="challenge-bar">
-      {open.map((c: Challenge) => (
-        <div key={c.id} className="challenge-card">
+      {shown.map((c: Challenge) => (
+        <div
+          key={c.id}
+          className={focusId === c.id ? 'challenge-card focused' : 'challenge-card'}
+        >
           <div className="challenge-q">
             <span className="challenge-kicker">AIBA challenges</span>
             <strong>{c.question}</strong>

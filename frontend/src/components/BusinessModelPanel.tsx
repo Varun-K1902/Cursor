@@ -1,27 +1,27 @@
 import type { ProcessModel } from '../model/types'
-import { findStructuralGaps, understandingPercent } from '../model/derive'
+import { findStructuralGaps } from '../model/derive'
 import { statusLabel } from '../model/labels'
 
 interface Props {
   model: ProcessModel
   onSelectStep: (id: string) => void
   selectedStepId: string | null
+  compact?: boolean
 }
 
-export function BusinessModelPanel({ model, onSelectStep, selectedStepId }: Props) {
+export function BusinessModelPanel({
+  model,
+  onSelectStep,
+  selectedStepId,
+  compact = false,
+}: Props) {
   const gaps = findStructuralGaps(model)
-  const pct = understandingPercent(model)
 
   return (
-    <aside className="business-panel">
-      <div className="panel-section-label">Business understanding</div>
-
-      <div className="understand-meter" aria-label={`${pct}% structurally understood`}>
-        <div className="understand-bar" style={{ width: `${pct}%` }} />
-        <span>{pct}% structurally understood</span>
-      </div>
-      <p className="fine-print">
-        Structural completeness ≠ factual completeness. The business may still have omitted a process.
+    <aside className={compact ? 'business-panel compact' : 'business-panel'}>
+      <div className="panel-section-label">Business Model</div>
+      <p className="fine-print model-lede">
+        Progressive discovery — not a form to fill. Sections appear as facts are found.
       </p>
 
       {model.people.length > 0 && (
@@ -102,7 +102,7 @@ export function BusinessModelPanel({ model, onSelectStep, selectedStepId }: Prop
         </section>
       )}
 
-      {gaps.length > 0 && (
+      {!compact && gaps.length > 0 && (
         <section>
           <h3>Structural gaps</h3>
           <ul className="plain-list gap-list">
@@ -123,8 +123,8 @@ export function BusinessModelPanel({ model, onSelectStep, selectedStepId }: Prop
 
       {model.people.length === 0 && model.steps.length === 0 && (
         <p className="empty-hint">
-          Tell AIBA how this process works. People, things, rules and steps will appear here as they
-          are discovered — not as a blank form to fill.
+          Tell AIBA how this process works. People, things, rules and steps appear here as they are
+          discovered.
         </p>
       )}
     </aside>
