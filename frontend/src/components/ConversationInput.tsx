@@ -5,9 +5,17 @@ interface Props {
   onSubmit: (text: string, modality: 'typed' | 'voice' | 'paste') => void
   disabled?: boolean
   lastSummary?: string
+  draftText?: string
+  onDraftConsumed?: () => void
 }
 
-export function ConversationInput({ onSubmit, disabled, lastSummary }: Props) {
+export function ConversationInput({
+  onSubmit,
+  disabled,
+  lastSummary,
+  draftText,
+  onDraftConsumed,
+}: Props) {
   const [text, setText] = useState('')
   const [listening, setListening] = useState(false)
   const recognitionRef = useRef<{ stop: () => void } | null>(null)
@@ -17,6 +25,13 @@ export function ConversationInput({ onSubmit, disabled, lastSummary }: Props) {
       recognitionRef.current?.stop()
     }
   }, [])
+
+  useEffect(() => {
+    if (draftText != null && draftText !== '') {
+      setText(draftText)
+      onDraftConsumed?.()
+    }
+  }, [draftText, onDraftConsumed])
 
   function submit(modality: 'typed' | 'voice' | 'paste' = 'typed') {
     const t = text.trim()
@@ -32,7 +47,6 @@ export function ConversationInput({ onSubmit, disabled, lastSummary }: Props) {
         .webkitSpeechRecognition
 
     if (!SR) {
-      // Fallback: treat as typed note that voice modality is unavailable
       setText((prev) => prev || 'A nurse searches for a child.')
       onSubmit(
         text.trim() ||
@@ -90,9 +104,6 @@ export function ConversationInput({ onSubmit, disabled, lastSummary }: Props) {
           placeholder="Tell me / type / paste / speak about the process…"
           rows={2}
           onChange={(e) => setText(e.target.value)}
-          onPaste={() => {
-            // modality marked on submit if paste detected via recent paste — keep simple
-          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
@@ -126,7 +137,6 @@ export function ConversationInput({ onSubmit, disabled, lastSummary }: Props) {
   )
 }
 
-// Minimal SpeechRecognition typings for browsers that support it
 interface SpeechRecognition extends EventTarget {
   lang: string
   interimResults: boolean

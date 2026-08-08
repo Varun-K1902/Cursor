@@ -67,12 +67,26 @@ Business statement
         ↓
 interpretStatement()  →  ProcessModel (canonical)
         ↓
-   ┌────┴────┐
-   ↓         ↓
-deriveFlow  deriveScreens
-   ↓         ↓
- Flow     Functional Preview
+   ┌────┴────┬────────────┐
+   ↓         ↓            ↓
+deriveFlow  deriveScreens  compileStory (Scene Graph)
+   ↓         ↓            ↓
+ Flow     Functional    Visual Story
+          Preview
 ```
+
+### Visual Story
+
+First-class interactive storyboard renderer of the same canonical model:
+
+- Deterministic Scene Graph compiler (finite scene grammar)
+- Story World with stable character/location/object visual IDs
+- Pause on unresolved outcomes — never invent the next step
+- Real-world action → digital experience transition into the Live Sketch
+- Corrections update the model; Flow + Preview + Story stay in sync
+- MVP uses illustrated storyboard assets (no generative video)
+
+Primary action: **Show me what you understood** — not Generate Video.
 
 ## Domains exercised
 

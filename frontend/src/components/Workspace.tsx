@@ -11,7 +11,7 @@ import {
   resolveChallenge,
   resolveOutcomeDestination,
 } from '../model/interpret'
-import { ProcessHeader, type LayoutMode } from './ProcessHeader'
+import { ProcessHeader, type LayoutMode, type WorkspaceView } from './ProcessHeader'
 import { BusinessModelPanel } from './BusinessModelPanel'
 import { FunctionalPreview } from './FunctionalPreview'
 import { FlowView } from './FlowView'
@@ -19,6 +19,7 @@ import { ConversationInput } from './ConversationInput'
 import { ProvenancePanel } from './ProvenancePanel'
 import { ChallengeBar } from './ChallengeBar'
 import { InsightPanel } from './InsightPanel'
+import { VisualStory } from './VisualStory'
 
 interface Props {
   model: ProcessModel
@@ -28,10 +29,12 @@ interface Props {
 
 export function Workspace({ model, onChange, onBack }: Props) {
   const [summary, setSummary] = useState('')
+  const [view, setView] = useState<WorkspaceView>('workshop')
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('workshop')
   const [insightOpen, setInsightOpen] = useState(true)
   const [mobilePane, setMobilePane] = useState<'model' | 'flow' | 'preview'>('flow')
   const [focusChallengeId, setFocusChallengeId] = useState<string | null>(null)
+  const [draftInput, setDraftInput] = useState<string | undefined>(undefined)
 
   const screens = useMemo(() => deriveScreens(model), [model])
   const selected =
@@ -48,6 +51,7 @@ export function Workspace({ model, onChange, onBack }: Props) {
     const result = interpretStatement(model, text, modality)
     onChange(result.model)
     setSummary(result.summary)
+    setDraftInput(undefined)
   }
 
   function handleFreeze() {
@@ -107,19 +111,14 @@ export function Workspace({ model, onChange, onBack }: Props) {
     />
   )
 
-  const highlightedChallenges = focusChallengeId
-    ? {
-        ...model,
-        challenges: model.challenges.map((c) =>
-          c.id === focusChallengeId ? c : { ...c, resolved: c.resolved },
-        ),
-      }
-    : model
-
   return (
-    <div className={`workspace layout-${layoutMode}${insightOpen ? ' insight-open' : ''}`}>
+    <div
+      className={`workspace layout-${layoutMode}${insightOpen && view === 'workshop' ? ' insight-open' : ''}${view === 'story' ? ' view-story' : ''}`}
+    >
       <ProcessHeader
         model={model}
+        view={view}
+        onView={setView}
         layoutMode={layoutMode}
         onLayoutMode={setLayoutMode}
         insightOpen={insightOpen}
@@ -129,7 +128,7 @@ export function Workspace({ model, onChange, onBack }: Props) {
       />
 
       <ChallengeBar
-        model={highlightedChallenges}
+        model={model}
         focusId={focusChallengeId}
         onResolve={(cid, oid) => {
           onChange(resolveChallenge(model, cid, oid))
@@ -146,62 +145,81 @@ export function Workspace({ model, onChange, onBack }: Props) {
         }}
       />
 
-      <div className="mobile-tabs tri">
-        <button
-          type="button"
-          className={mobilePane === 'model' ? 'active' : ''}
-          onClick={() => setMobilePane('model')}
-        >
-          Model
-        </button>
-        <button
-          type="button"
-          className={mobilePane === 'flow' ? 'active' : ''}
-          onClick={() => setMobilePane('flow')}
-        >
-          Flow
-        </button>
-        <button
-          type="button"
-          className={mobilePane === 'preview' ? 'active' : ''}
-          onClick={() => setMobilePane('preview')}
-        >
-          Preview
-        </button>
-      </div>
-
-      <div className="workspace-body">
-        <div
-          className={`tri-pane mobile-${mobilePane}`}
-          data-layout={layoutMode}
-        >
-          <div className="pane-model">{modelPanel}</div>
-          <div className="pane-flow">
-            {flow}
-            <p className="sync-strip">
-              Flow and Functional Preview are projections of the same canonical model — not separate
-              documents.
-            </p>
+      {view === 'story' ? (
+        <VisualStory
+          model={model}
+          screen={screen}
+          onSelectStep={selectStep}
+          onConfirmStep={(stepId) => onChange(confirmStep(model, stepId))}
+          onCorrect={(hint) => {
+            setDraftInput(hint)
+            setSummary('Describe the correction below — the model, Flow, Preview and Story will update together.')
+          }}
+          onAskClarify={(question) => {
+            setDraftInput(question)
+            setSummary('Clarify in the input bar. AIBA will not invent the missing fact.')
+          }}
+          onClose={() => setView('workshop')}
+        />
+      ) : (
+        <>
+          <div className="mobile-tabs tri">
+            <button
+              type="button"
+              className={mobilePane === 'model' ? 'active' : ''}
+              onClick={() => setMobilePane('model')}
+            >
+              Model
+            </button>
+            <button
+              type="button"
+              className={mobilePane === 'flow' ? 'active' : ''}
+              onClick={() => setMobilePane('flow')}
+            >
+              Flow
+            </button>
+            <button
+              type="button"
+              className={mobilePane === 'preview' ? 'active' : ''}
+              onClick={() => setMobilePane('preview')}
+            >
+              Preview
+            </button>
           </div>
-          <div className="pane-preview">
-            {preview}
-            <ProvenancePanel model={model} step={selected} compact />
-          </div>
-        </div>
 
-        {insightOpen && (
-          <InsightPanel
-            model={model}
-            onSelectStep={selectStep}
-            onAskChallenge={(id) => setFocusChallengeId(id)}
-          />
-        )}
-      </div>
+          <div className="workspace-body">
+            <div className={`tri-pane mobile-${mobilePane}`} data-layout={layoutMode}>
+              <div className="pane-model">{modelPanel}</div>
+              <div className="pane-flow">
+                {flow}
+                <p className="sync-strip">
+                  Flow, Functional Preview and Visual Story are projections of the same canonical
+                  model.
+                </p>
+              </div>
+              <div className="pane-preview">
+                {preview}
+                <ProvenancePanel model={model} step={selected} compact />
+              </div>
+            </div>
+
+            {insightOpen && (
+              <InsightPanel
+                model={model}
+                onSelectStep={selectStep}
+                onAskChallenge={(id) => setFocusChallengeId(id)}
+              />
+            )}
+          </div>
+        </>
+      )}
 
       <ConversationInput
         onSubmit={handleInterpret}
         disabled={model.frozen}
         lastSummary={summary}
+        draftText={draftInput}
+        onDraftConsumed={() => setDraftInput(undefined)}
       />
     </div>
   )
