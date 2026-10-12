@@ -2,7 +2,7 @@
 
 Basis is a structured business-analysis workspace for project BAs and product BAs. The source of truth is objects — stakeholders, outcomes, requirements, rules, data, flows, stories, questions, and named baselines. Word, PDF, and Excel are views, not the record.
 
-The sample initiative is **Commonwealth Benefits Access Modernization (CBAM)**: a Department of Human Services program replacing three eligibility systems for SNAP, Medicaid, and childcare.
+The sample project is **Employee Leave Management**. Policies in that sample are illustrative and unconfirmed. The workspace is domain-agnostic: create another project from Home.
 
 ## Run
 
@@ -16,6 +16,8 @@ Open [http://localhost:3000](http://localhost:3000).
 ```bash
 npm run build
 npm run lint
+npm run typecheck
+npm test
 ```
 
 ## What you can do
@@ -25,7 +27,7 @@ npm run lint
 - Add stakeholders, requirements, glossary terms, dictionary rows, rules, stories, and questions. Add acceptance criteria in plain language or Given / When / Then on a requirement, story, or flow.
 - See the approved baseline **Eligibility Core 2026.1**, the proposed **2026.2** minted by a real change, and mint another version yourself. The approved baseline stays put.
 
-Edits live in the browser (`localStorage`). Use the header menu to reset the sample.
+Edits live in the browser (`localStorage`, key `basis.workspace.v2`). Use Settings or the header menu to reset the sample. The assistant is a local mock. PDF extraction, OCR, DOCX generation, and a live model are unavailable.
 
 ## Quality model
 

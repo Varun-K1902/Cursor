@@ -1,6 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+
+import { Button } from "@/components/ui/button"
 
 import { PageHeader, TraceList, TypePill } from "@/components/basis/bits"
 import {
@@ -15,11 +18,12 @@ import {
 import { useBasis } from "@/lib/store"
 
 export function TraceView() {
-  const { catalog } = useBasis()
+  const { catalog, state } = useBasis()
   const params = useSearchParams()
   const router = useRouter()
-  const focus = params.get("focus") ?? "fr-02"
-  const item = catalog.find((entry) => entry.id === focus) ?? catalog.find((entry) => entry.id === "fr-02")
+  const fallback = state.requirements[0]?.id ?? ""
+  const focus = params.get("focus") ?? fallback
+  const item = catalog.find((entry) => entry.id === focus) ?? catalog.find((entry) => entry.id === fallback)
   const groups = [...new Set(catalog.map((entry) => entry.group))]
 
   return (
@@ -70,6 +74,84 @@ export function TraceView() {
           </section>
         </div>
       ) : null}
+      <Coverage />
     </div>
   )
+}
+
+function Coverage() {
+  const { state, dispatch } = useBasis()
+  const orphans = state.requirements.filter(
+    (requirement) =>
+      !state.traces.some((link) => link.fromId === requirement.id || link.toId === requirement.id) &&
+      !state.useCases.some((useCase) => useCase.requirementIds.includes(requirement.id))
+  )
+  return (
+    <section className="mt-10 grid gap-4">
+      <h2 className="text-2xl font-medium">Relationships and impact</h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="text-xs text-muted-foreground">
+              <th className="p-2">From</th>
+              <th className="p-2">Relation</th>
+              <th className="p-2">To</th>
+            </tr>
+          </thead>
+          <tbody>
+            {state.traces.map((link) => (
+              <tr key={link.id} className="border-t">
+                <td className="p-2">
+                  <Link href={hrefFor(state, link.fromId)}>{link.fromId}</Link>
+                </td>
+                <td className="p-2">{link.relation}</td>
+                <td className="p-2">
+                  <Link href={hrefFor(state, link.toId)}>{link.toId}</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div>
+        <h3 className="font-medium">Requirements with no trace link</h3>
+        {orphans.length === 0 ? <p className="text-sm text-muted-foreground">Every requirement has a trace link or a use case.</p> : null}
+        {orphans.map((requirement) => (
+          <p key={requirement.id} className="text-sm">
+            <Link href={`/requirements/${requirement.id}`}>{requirement.code} {requirement.title}</Link>
+          </p>
+        ))}
+      </div>
+      <div className="grid gap-2">
+        <h3 className="font-medium">Change impact</h3>
+        <p className="text-sm text-muted-foreground">Downstream items are flagged. Approved text is not overwritten.</p>
+        {state.impacts.length === 0 ? <p className="text-sm text-muted-foreground">No impact items.</p> : null}
+        {state.impacts.map((item) => (
+          <article key={item.id} className="rounded-lg bg-card p-3 text-sm ring-1 ring-foreground/10">
+            <p className="font-medium">{item.targetLabel}</p>
+            <p>{item.reason}</p>
+            <p className="text-xs text-muted-foreground">{item.status}</p>
+            {item.status === "needs-review" ? (
+              <div className="mt-2 flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => dispatch({ type: "impact-status", id: item.id, status: "reviewed" })}>
+                  Mark reviewed
+                </Button>
+                <Button size="sm" asChild variant="outline">
+                  <Link href={hrefFor(state, item.targetId)}>Open</Link>
+                </Button>
+              </div>
+            ) : null}
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function hrefFor(state: ReturnType<typeof useBasis>["state"], id: string) {
+  if (state.requirements.some((item) => item.id === id)) return `/requirements/${id}`
+  if (state.rules.some((item) => item.id === id)) return `/rules#${id}`
+  if (state.useCases.some((item) => item.id === id)) return "/use-cases"
+  if (state.questions.some((item) => item.id === id)) return `/questions#${id}`
+  return "/trace"
 }

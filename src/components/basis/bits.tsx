@@ -51,6 +51,9 @@ export function StatusPill({ status }: { status: RequirementStatus }) {
   const styles: Record<RequirementStatus, string> = {
     draft: "bg-muted text-muted-foreground",
     "in-review": "bg-accent text-accent-foreground",
+    "changes-requested": "bg-coral/80 text-coral-ink",
+    approved: "bg-[oklch(0.93_0.04_155)] text-[oklch(0.34_0.07_155)]",
+    deprecated: "bg-muted text-muted-foreground line-through",
     baselined: "bg-amber-reward/80 text-amber-ink",
     changed: "bg-coral/80 text-coral-ink",
   }

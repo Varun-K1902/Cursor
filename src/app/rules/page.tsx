@@ -2,6 +2,9 @@
 
 import { useState } from "react"
 
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+
 import { ObjectRef, PageHeader, TypePill } from "@/components/basis/bits"
 import { AddRuleDialog } from "@/components/basis/dialogs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -29,6 +32,7 @@ export default function RulesPage() {
           <TabsTrigger value="operative">Operative</TabsTrigger>
         </TabsList>
       </Tabs>
+      <ConditionBuilder />
       <div className="mt-5 grid gap-3">
         {visible.map((rule) => {
           const constrains = state.traces.filter(
@@ -43,6 +47,12 @@ export default function RulesPage() {
               </CardHeader>
               <CardContent className="grid gap-4">
                 <p className="max-w-3xl leading-relaxed">{rule.statement}</p>
+                {rule.clauses.length > 0 ? (
+                  <p className="text-sm">
+                    IF {rule.clauses.map((clause) => `${clause.join ? `${clause.join} ` : ""}${clause.left} ${clause.operator} ${clause.right}`).join(" ")} THEN {rule.result}
+                    {rule.status === "unconfirmed" ? " This rule is unconfirmed." : ""}
+                  </p>
+                ) : null}
                 <p className="text-sm text-muted-foreground">Source: {rule.source}</p>
                 {uses.length > 0 ? (
                   <div className="grid gap-2 md:grid-cols-2">
@@ -67,5 +77,50 @@ export default function RulesPage() {
         })}
       </div>
     </div>
+  )
+}
+
+function ConditionBuilder() {
+  const { state, dispatch } = useBasis()
+  const [left, setLeft] = useState("leave balance")
+  const [operator, setOperator] = useState("is")
+  const [right, setRight] = useState("sufficient")
+  const [result, setResult] = useState("permit submission")
+  return (
+    <form
+      className="mt-4 grid gap-2 rounded-xl bg-card p-4 text-sm ring-1 ring-foreground/10"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const code = `BR-${String(state.rules.length + 1).padStart(2, "0")}`
+        dispatch({
+          type: "add-rule",
+          rule: {
+            id: `br-${crypto.randomUUID().slice(0, 6)}`,
+            code,
+            kind: "operative",
+            title: `${left} ${operator} ${right}`,
+            statement: `IF ${left} ${operator} ${right}, THEN ${result}. Unconfirmed until a decision records it.`,
+            source: "Entered by the BA. Not a confirmed policy.",
+            clauses: [{ left, operator, right }],
+            result,
+            exceptions: "",
+            ownerId: state.stakeholders[0]?.id ?? "",
+            status: "unconfirmed",
+            effectiveDate: "",
+            requirementIds: [],
+          },
+        })
+      }}
+    >
+      <p className="font-medium">Condition builder</p>
+      <p className="text-muted-foreground">The leave example in the sample is illustrative and unconfirmed. This form does not apply a real HR policy.</p>
+      <div className="flex flex-wrap gap-2">
+        <Input aria-label="Condition subject" value={left} onChange={(event) => setLeft(event.target.value)} />
+        <Input aria-label="Operator" value={operator} onChange={(event) => setOperator(event.target.value)} />
+        <Input aria-label="Condition value" value={right} onChange={(event) => setRight(event.target.value)} />
+        <Input aria-label="Result" value={result} onChange={(event) => setResult(event.target.value)} />
+        <Button type="submit">Add unconfirmed rule</Button>
+      </div>
+    </form>
   )
 }

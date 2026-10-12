@@ -98,7 +98,9 @@ export default function BaselinePage() {
               {baseline.approvedOn ? (
                 <p className="text-sm text-amber-ink">
                   Approved {formatDate(baseline.approvedOn)}
-                  {baseline.approverId ? " by Helen Cho" : ""}
+                  {baseline.approverId
+                    ? ` by ${state.stakeholders.find((person) => person.id === baseline.approverId)?.name ?? "the approver"}`
+                    : ""}
                 </p>
               ) : null}
             </CardContent>

@@ -47,6 +47,9 @@ export const ruleKindLabel: Record<RuleKind, string> = {
 export const statusLabel: Record<RequirementStatus, string> = {
   draft: "Draft",
   "in-review": "In review",
+  "changes-requested": "Changes requested",
+  approved: "Approved",
+  deprecated: "Deprecated",
   baselined: "Baselined",
   changed: "Changed",
 }

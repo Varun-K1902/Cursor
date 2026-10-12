@@ -1,4 +1,4 @@
-export const SCHEMA = 1
+export const SCHEMA = 2
 
 export type RequirementKind =
   | "functional"
@@ -19,7 +19,20 @@ export type QualityCharacteristic =
   | "flexibility"
   | "safety"
 
-export type RequirementStatus = "draft" | "in-review" | "baselined" | "changed"
+export type RequirementStatus =
+  | "draft"
+  | "in-review"
+  | "changes-requested"
+  | "approved"
+  | "deprecated"
+  | "baselined"
+  | "changed"
+
+export type RequirementPriority = "must" | "should" | "could" | "wont"
+export type AppRole = "ba" | "reviewer" | "approver" | "architect" | "developer" | "tester"
+export type QuestionStatus = "open" | "assigned" | "awaiting" | "answered" | "resolved"
+export type DetailLevel = "simple" | "standard" | "comprehensive"
+export type AnswerValue = string | number | boolean | string[]
 export type StakeholderKind = "author" | "sponsor" | "owner" | "consulted"
 export type Influence = "high" | "medium" | "low"
 export type RuleKind = "definitional" | "operative"
@@ -37,6 +50,22 @@ export interface Initiative {
   agency: string
   problem: string
   approach: string
+  description: string
+  ownerName: string
+  organization: string
+  sample: boolean
+  draft: boolean
+  domain: string
+  customDomain: string
+  projectType: string
+  startingPoint: string
+  desiredOutcomes: string[]
+  collaboration: string
+  detailLevel: DetailLevel
+  templateIds: string[]
+  hiddenSectionIds: string[]
+  recommendationReason: string
+  updatedAt: string
 }
 
 export interface Team {
@@ -101,6 +130,11 @@ export interface Requirement {
   status: RequirementStatus
   version: string
   ownerId: string
+  source: string
+  priority: RequirementPriority
+  rationale: string
+  relatedProcessId?: string
+  updatedAt: string
 }
 
 export interface AcceptanceCriterion {
@@ -130,6 +164,13 @@ export interface DataElement {
   ownerId: string
 }
 
+export interface RuleClause {
+  left: string
+  operator: string
+  right: string
+  join?: "AND" | "OR"
+}
+
 export interface BusinessRule {
   id: string
   code: string
@@ -137,6 +178,13 @@ export interface BusinessRule {
   title: string
   statement: string
   source: string
+  clauses: RuleClause[]
+  result: string
+  exceptions: string
+  ownerId: string
+  status: "draft" | "unconfirmed" | "confirmed" | "retired"
+  effectiveDate: string
+  requirementIds: string[]
 }
 
 export interface FlowStep {
@@ -177,9 +225,15 @@ export interface Question {
   code: string
   prompt: string
   raisedById: string
-  status: "open" | "answered"
+  status: QuestionStatus
   decisionId?: string
   relatedId?: string
+  sectionId?: string
+  priority: "high" | "medium" | "low"
+  assignedStakeholderId?: string
+  answer: string
+  raisedOn: string
+  resolvedOn: string
 }
 
 export interface Decision {
@@ -190,6 +244,10 @@ export interface Decision {
   decidedById: string
   decidedOn: string
   questionId?: string
+  context: string
+  options: string
+  rationale: string
+  relatedIds: string[]
 }
 
 export interface TraceLink {
@@ -233,6 +291,195 @@ export interface ChangeRequest {
   createdOn: string
 }
 
+export interface Assumption {
+  id: string
+  code: string
+  statement: string
+  reason: string
+  relatedId?: string
+  ownerId: string
+  validation: "unconfirmed" | "validated" | "invalid"
+  consequence: string
+}
+
+export interface Comment {
+  id: string
+  objectId: string
+  authorRole: AppRole
+  body: string
+  createdAt: string
+  resolved: boolean
+}
+
+export interface Review {
+  id: string
+  objectId: string
+  reviewerRole: AppRole
+  decision: "comment" | "changes-requested" | "approved"
+  note: string
+  at: string
+}
+
+export interface ActivityEvent {
+  id: string
+  at: string
+  actorRole: AppRole
+  message: string
+  objectId?: string
+}
+
+export type ProcessNodeType =
+  | "start"
+  | "end"
+  | "activity"
+  | "decision"
+  | "input-output"
+  | "approval"
+  | "system"
+  | "exception"
+
+export interface ProcessNode {
+  id: string
+  type: ProcessNodeType
+  label: string
+  x: number
+  y: number
+  linkedIds: string[]
+}
+
+export interface ProcessEdge {
+  id: string
+  from: string
+  to: string
+  label?: string
+}
+
+export interface ProcessModel {
+  id: string
+  name: string
+  example: boolean
+  nodes: ProcessNode[]
+  edges: ProcessEdge[]
+}
+
+export interface UseCaseStep {
+  id: string
+  text: string
+}
+
+export interface UseCaseBranch {
+  id: string
+  name: string
+  steps: UseCaseStep[]
+}
+
+export interface UseCase {
+  id: string
+  code: string
+  name: string
+  goal: string
+  primaryActor: string
+  supportingActors: string
+  trigger: string
+  preconditions: string
+  postconditions: string
+  mainFlow: UseCaseStep[]
+  alternativeFlows: UseCaseBranch[]
+  exceptionFlows: UseCaseBranch[]
+  ruleIds: string[]
+  requirementIds: string[]
+  acceptance: string
+  status: "draft" | "in-review" | "approved"
+}
+
+export type EntityFieldType =
+  | "text"
+  | "integer"
+  | "decimal"
+  | "boolean"
+  | "date"
+  | "datetime"
+  | "email"
+  | "url"
+  | "json"
+  | "file"
+  | "enum"
+
+export interface EntityField {
+  id: string
+  name: string
+  type: EntityFieldType
+  required: boolean
+  primaryKey: boolean
+  unique: boolean
+  description: string
+  defaultValue: string
+  enumValues: string[]
+  foreignKeyEntityId: string
+}
+
+export interface DataEntity {
+  id: string
+  name: string
+  description: string
+  fields: EntityField[]
+  requirementIds: string[]
+  ruleIds: string[]
+}
+
+export interface EntityRelation {
+  id: string
+  fromId: string
+  toId: string
+  kind: "one-to-one" | "one-to-many" | "many-to-many"
+  label: string
+}
+
+export interface UiComponent {
+  id: string
+  name: string
+  description: string
+  requirementIds: string[]
+}
+
+export interface TestScenario {
+  id: string
+  code: string
+  title: string
+  requirementId: string
+  steps: string
+}
+
+export interface ImpactItem {
+  id: string
+  sourceId: string
+  targetId: string
+  targetLabel: string
+  reason: string
+  status: "needs-review" | "reviewed" | "updated"
+}
+
+export type SuggestionKind = "suggestion" | "explanation" | "missing" | "proposed-edit"
+
+export interface AiSuggestion {
+  id: string
+  targetId: string
+  operation: string
+  kind: SuggestionKind
+  title: string
+  body: string
+  proposedText: string
+  status: "pending" | "accepted" | "dismissed"
+}
+
+export interface ImportRecord {
+  id: string
+  fileName: string
+  format: string
+  originalText: string
+  savedAt: string
+}
+
 export interface BasisState {
   schema: number
   initiative: Initiative
@@ -255,4 +502,27 @@ export interface BasisState {
   traces: TraceLink[]
   baselines: Baseline[]
   changes: ChangeRequest[]
+  assumptions: Assumption[]
+  comments: Comment[]
+  reviews: Review[]
+  activity: ActivityEvent[]
+  sectionAnswers: Record<string, Record<string, AnswerValue>>
+  sectionFlags: Record<string, "needs-clarification" | "skipped">
+  processModels: ProcessModel[]
+  useCases: UseCase[]
+  entities: DataEntity[]
+  entityRelations: EntityRelation[]
+  uiComponents: UiComponent[]
+  testScenarios: TestScenario[]
+  impacts: ImpactItem[]
+  suggestions: AiSuggestion[]
+  imports: ImportRecord[]
+  issuedCodes: string[]
+}
+
+export interface WorkspaceState {
+  schema: number
+  activeProjectId: string
+  role: AppRole
+  projects: BasisState[]
 }

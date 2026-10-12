@@ -25,34 +25,44 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 import { useBasis } from "@/lib/store"
 import { CommandMenu, useCommandHotkey } from "@/components/shell/command-menu"
-import { navGroups, type NavItem } from "@/components/shell/nav"
+import { primaryNav, projectNav, recordNav, type NavItem } from "@/components/shell/nav"
+import { roleOptions } from "@/lib/re/roles"
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
+  const { hasProject } = useBasis()
+  const active = (href: string) => (href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`))
   return (
-    <nav className="grid gap-5" aria-label="Baseline">
-      <Link
-        href="/"
-        onClick={onNavigate}
-        className={cn(
-          "rounded-lg px-2.5 py-2 text-sm transition-colors",
-          pathname === "/" ? "bg-sidebar-accent text-sidebar-accent-foreground" : "hover:bg-sidebar-accent/70"
-        )}
-      >
-        Initiative
-      </Link>
-      {navGroups.map((group) => (
-        <div key={group.label}>
-          <p className="px-2.5 text-[0.68rem] font-semibold tracking-[0.16em] text-sidebar-foreground/50 uppercase">
-            {group.label}
-          </p>
-          <div className="mt-1.5 grid gap-0.5">
-            {group.items.map((item) => (
-              <NavRow key={item.href} item={item} active={pathname === item.href || pathname.startsWith(`${item.href}/`)} onNavigate={onNavigate} />
-            ))}
-          </div>
-        </div>
-      ))}
+    <nav className="grid gap-5" aria-label="Workspace">
+      <div className="grid gap-0.5">
+        {primaryNav.map((item) => (
+          <NavRow key={item.href} item={item} active={active(item.href)} onNavigate={onNavigate} />
+        ))}
+      </div>
+      {hasProject ? (
+        <>
+          {projectNav.map((group) => (
+            <div key={group.label}>
+              <p className="px-2.5 text-[0.68rem] font-semibold tracking-[0.16em] text-sidebar-foreground/50 uppercase">{group.label}</p>
+              <div className="mt-1.5 grid gap-0.5">
+                {group.items.map((item) => (
+                  <NavRow key={item.href} item={item} active={active(item.href)} onNavigate={onNavigate} />
+                ))}
+              </div>
+            </div>
+          ))}
+          <details className="px-1">
+            <summary className="cursor-pointer px-1.5 text-[0.68rem] font-semibold tracking-[0.16em] text-sidebar-foreground/50 uppercase">
+              {recordNav.label}
+            </summary>
+            <div className="mt-1.5 grid gap-0.5">
+              {recordNav.items.map((item) => (
+                <NavRow key={item.href} item={item} active={active(item.href)} onNavigate={onNavigate} />
+              ))}
+            </div>
+          </details>
+        </>
+      ) : null}
     </nav>
   )
 }
@@ -84,7 +94,7 @@ function NavRow({
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  const { state, dispatch } = useBasis()
+  const { state, workspace, dispatch, saveMessage, hasProject } = useBasis()
   const [menuOpen, setMenuOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
   const openMenu = useCallback(() => setMenuOpen(true), [])
@@ -100,8 +110,10 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="font-heading text-3xl leading-none text-sidebar-primary">Basis</span>
               <span className="mt-1 block text-xs text-sidebar-foreground/70">The record, not the document</span>
             </Link>
-            <p className="mt-4 text-sm font-medium">{state.initiative.shortName}</p>
-            <p className="text-xs leading-snug text-sidebar-foreground/60">{state.initiative.name}</p>
+            <p className="mt-4 text-sm font-medium">{hasProject ? state.initiative.shortName : "No project open"}</p>
+            <p className="text-xs leading-snug text-sidebar-foreground/60">
+              {hasProject ? state.initiative.name : "Create a project or open the sample."}
+            </p>
           </div>
           <Separator className="bg-sidebar-border" />
           <ScrollArea className="flex-1 px-2 py-4">
@@ -126,8 +138,23 @@ export function AppShell({ children }: { children: ReactNode }) {
               </SheetContent>
             </Sheet>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm text-muted-foreground md:hidden">{state.initiative.shortName}</p>
+              <p className="truncate text-sm text-muted-foreground">{saveMessage}</p>
             </div>
+            <label className="hidden items-center gap-2 text-xs text-muted-foreground lg:flex">
+              Role
+              <select
+                aria-label="Simulated role"
+                className="rounded-md border border-border bg-card px-2 py-1 text-sm text-foreground"
+                value={workspace.role}
+                onChange={(event) => dispatch({ type: "set-role", role: event.target.value as typeof workspace.role })}
+              >
+                {roleOptions.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             {approved ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -154,12 +181,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onSelect={() => dispatch({ type: "reset" })}>
-                  Reset sample initiative
+                  Reset demo data
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </header>
-          <main key={pathname} className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 md:px-8">
+          <main key={pathname} className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 md:px-8">
             {children}
           </main>
         </div>

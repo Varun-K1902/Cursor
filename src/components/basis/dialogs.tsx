@@ -364,6 +364,13 @@ export function AddRuleDialog() {
         title: title.trim(),
         statement: statement.trim(),
         source: source.trim(),
+        clauses: [],
+        result: "",
+        exceptions: "",
+        ownerId: state.stakeholders.find((person) => person.kind === "author")?.id ?? "",
+        status: "unconfirmed",
+        effectiveDate: "",
+        requirementIds: constrainsId === "none" ? [] : [constrainsId],
       },
     })
     setTitle("")
@@ -525,6 +532,10 @@ export function AddQuestionDialog() {
         raisedById,
         status: "open",
         relatedId: relatedId === "none" ? undefined : relatedId,
+        priority: "medium",
+        answer: "",
+        raisedOn: new Date().toISOString().slice(0, 10),
+        resolvedOn: "",
       },
     })
     setPrompt("")

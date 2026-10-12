@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useParams } from "next/navigation"
 
 import { AcceptanceEditor } from "@/components/basis/acceptance"
+import { RequirementAssistant } from "@/components/requirements/assistant"
 import { CodeMark, PersonName, StatusPill, TraceList, TypePill } from "@/components/basis/bits"
 import { Button } from "@/components/ui/button"
 import { qualityLabel, requirementKindLabel, requirementTone } from "@/lib/labels"
@@ -79,6 +80,7 @@ export default function RequirementPage() {
         <Button asChild variant="outline">
           <Link href={`/trace?focus=${requirement.id}`}>Open in the trace view</Link>
         </Button>
+        <RequirementAssistant requirementId={requirement.id} />
       </aside>
     </div>
   )
